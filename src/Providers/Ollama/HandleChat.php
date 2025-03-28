@@ -18,14 +18,14 @@ trait HandleChat
 
         $mapper = new MessageMapper($messages);
 
-        $json = \array_filter([
+        $json = [
             'stream' => false,
             'model' => $this->model,
             'temperature' => $this->temperature,
             'messages' => $mapper->map(),
-        ]);
+        ];
 
-        if (!empty($this->tools)) {
+        if (! empty($this->tools)) {
             $json['tools'] = $this->generateToolsPayload();
         }
 

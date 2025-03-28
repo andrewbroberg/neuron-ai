@@ -2,7 +2,6 @@
 
 namespace NeuronAI\Tests;
 
-
 use NeuronAI\Agent;
 use NeuronAI\AgentInterface;
 use NeuronAI\Chat\Messages\AssistantMessage;
@@ -11,6 +10,8 @@ use NeuronAI\Chat\Messages\UserMessage;
 use NeuronAI\RAG\RAG;
 use NeuronAI\Tools\Tool;
 use NeuronAI\Chat\Messages\ToolCallMessage;
+use NeuronAI\Chat\Messages\ToolCallResultMessage;
+use NeuronAI\Tests\Doubles\InMemoryAIProvider;
 use NeuronAI\Tools\ToolInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -22,9 +23,7 @@ class NeuronAITest extends TestCase
      *
      * @throws \Exception
      */
-    public function setUp(): void
-    {
-    }
+    public function setup(): void {}
 
     public function testAgentInstance()
     {
@@ -50,5 +49,34 @@ class NeuronAITest extends TestCase
     {
         $tool = new Tool('example', 'example');
         $this->assertInstanceOf(ToolInterface::class, $tool);
+    }
+
+    public function testToolMessageHandling()
+    {
+        $tool = new Tool(
+            name: 'example_tool',
+            description: 'This is a description',
+        )->setCallable(function () {
+            return 'foo';
+        });
+
+        $provider = new InMemoryAIProvider(
+            responses: [
+                new ToolCallMessage(
+                    content: null,
+                    tools: [$tool],
+                ),
+                new AssistantMessage('This is a reply from the assistant')
+            ],
+        );
+        $agent = new Agent()->setProvider($provider);
+        $response = $agent->chat(new Message('Testing'));
+
+        // We expect 4 messages in history only:
+        // 1. Original Chat Message
+        // 2. The tool call message
+        // 3. The ToolCallResultMessage once agent processes the tool call
+        // 4. The AssistantMessage response
+        $this->assertCount(4, $agent->resolveChatHistory()->getMessages());
     }
 }
